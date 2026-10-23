@@ -59,6 +59,15 @@ function App() {
   const [uploadProgress, setUploadProgress] = useState({ percentage: 0, loadedMB: '0.00 MB', totalMB: '0.00 MB' });
   const [modalError, setModalError] = useState('');
 
+  // İşlem Geçmişi State'i
+  const [logs, setLogs] = useState([]);
+
+  // Log ekleme fonksiyonu
+  const addLog = (message, type = 'info') => {
+    const time = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    setLogs(prev => [...prev, { time, message, type }]);
+  };
+
   const quantizeValue = (value, min, max) => {
     const num = Number(value) || 0;
     if (num <= min) return 0;
@@ -93,6 +102,7 @@ function App() {
         };
       });
       setFinancialData(processedData);
+      addLog(`"${file.name}" başarıyla yüklendi ve kuantize edildi.`, "success"); // YENİ LOG
     };
     reader.readAsArrayBuffer(file);
   };
@@ -109,16 +119,19 @@ function App() {
     setIsGeneratingKeys(true);
     setKeyStatus(null);
     setEncryptError(null); 
+    addLog("Yerel kasada FHE anahtarları üretiliyor...", "warning"); // YENİ LOG
     
     try {
       const response = await fetch("http://127.0.0.1:8000/generate_keys");
       if (!response.ok) throw new Error("Sunucu hatası");
       await response.json();
       setKeyStatus('success');
+      addLog("Kriptografik anahtarlar başarıyla oluşturuldu.", "success"); // YENİ LOG
       setTimeout(() => setKeyStatus(null), 3000);
     } catch (error) {
       console.error("Key generation failed:", error);
       setKeyStatus('error');
+      addLog("Anahtar üretimi başarısız oldu.", "error"); // YENİ LOG
     } finally {
       setIsGeneratingKeys(false);
     }
@@ -144,9 +157,11 @@ function App() {
       
       const data = await response.json();
       setEncryptedPayload(data.encrypted_payload);
+      addLog("1. satır verisi LWE şeması ile başarıyla şifrelendi.", "success"); // YENİ LOG
     } catch (error) {
       console.error("Encryption failed:", error);
       setEncryptError("Lütfen işlemi şifrelemeden önce 'Kriptografik Anahtar Üret' butonuna basarak anahtarlarınızı oluşturun.");
+      addLog("Şifreleme işlemi başarısız oldu. Anahtar eksik olabilir.", "error"); // YENİ LOG
     }
   };
 
@@ -158,6 +173,7 @@ function App() {
     setUploadProgress({ percentage: 0, loadedMB: '0.00 MB', totalMB: '0.00 MB' });
     setModalError('');
     setIsProcessing(true);
+    addLog("Şifreli veri uzak sunucuya değerlendirme için iletiliyor...", "info"); // YENİ LOG
 
     try {
       const keysResponse = await fetch("http://127.0.0.1:8000/get_evaluation_keys");
@@ -191,6 +207,8 @@ function App() {
 
       setEncryptedResult(response.data.encrypted_result_hex);
       setModalStep('success');
+      addLog("Sunucu kör (blind) hesaplamayı tamamladı ve sonucu iletti.", "success"); // YENİ LOG
+      
       setTimeout(() => {
         setModalOpen(false);
         setIsProcessing(false);
@@ -202,6 +220,7 @@ function App() {
       setModalError(message);
       setModalStep('error');
       setIsProcessing(false);
+      addLog("Uzak sunucu iletişimi veya hesaplama başarısız oldu.", "error"); // YENİ LOG
     }
   };
 
@@ -221,9 +240,13 @@ function App() {
       const data = await response.json();
       setFinalResult(data.decrypted_result);
       
+      const verdict = data.decrypted_result === 1 ? "REDDEDİLDİ" : "ONAYLANDI"; // YENİ LOG
+      addLog(`Nihai kredi kararı yerel kasada deşifre edildi: ${verdict}`, "success"); // YENİ LOG
+      
     } catch (error) {
       console.error("Decryption failed:", error);
       alert("Decryption process failed.");
+      addLog("Deşifreleme işlemi başarısız oldu.", "error"); // YENİ LOG
     }
   };
 
@@ -639,6 +662,33 @@ function App() {
           </div>
         </footer>
       </main>
+
+      {/* Sabit (Fixed) İşlem Geçmişi Paneli - Sadece Tam Ekranda Görünür */}
+      <aside className="audit-sidebar-fixed">
+        <div className="audit-header" style={{ justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span className="audit-icon">&#128196;</span>
+            <h3>İşlem Geçmişi</h3>
+          </div>
+          {logs.length > 0 && (
+            <button onClick={() => setLogs([])} className="clear-logs-btn" title="Logları Temizle">
+              Temizle
+            </button>
+          )}
+        </div>
+        <div className="audit-content">
+          {logs.length === 0 ? (
+            <div className="empty-log">Henüz işlem yapılmadı...</div>
+          ) : (
+            logs.map((log, index) => (
+              <div key={index} className={`log-item ${log.type}`}>
+                <span className="log-time">[{log.time}]</span>
+                <span className="log-message">{log.message}</span>
+              </div>
+            ))
+          )}
+        </div>
+      </aside>
 
       <FheTransferModal
         isOpen={modalOpen}

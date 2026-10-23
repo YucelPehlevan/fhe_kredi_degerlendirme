@@ -1744,3 +1744,63 @@
   color: #ffffff;
 }
 
+/* =========================================
+   İŞLEM GEÇMİŞİ (SABİT YAN PANEL)
+   ========================================= */
+.audit-sidebar-fixed {
+  position: fixed;
+  top: 60px; /* Topbar'ın altından başlar */
+  right: 0;
+  bottom: 0;
+  width: 320px;
+  background-color: #0b1120;
+  border-left: 1px solid #1e293b;
+  z-index: 1000;
+  flex-direction: column;
+  /* Başlangıçta KESİNLİKLE GİZLİ */
+  display: none; 
+}
+
+/* YALNIZCA TAM EKRANDA (1250px üzeri) GÖSTER */
+@media (min-width: 1250px) {
+  .audit-sidebar-fixed {
+    display: flex;
+  }
+}
+
+.audit-header {
+  padding: 16px;
+  border-bottom: 1px solid #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #94a3b8;
+}
+
+.audit-header h3 { margin: 0; font-size: 14px; font-weight: 600; }
+.audit-content { padding: 16px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.empty-log { color: #475569; font-size: 13px; text-align: center; margin-top: 20px; }
+.log-item { font-size: 12px; line-height: 1.4; padding: 8px 10px; border-radius: 6px; background: rgba(30, 41, 59, 0.4); color: #cbd5e1; }
+.log-time { color: #64748b; margin-right: 8px; font-family: monospace; }
+.log-item.success { border-left: 3px solid #10b981; }
+.log-item.warning { border-left: 3px solid #f59e0b; }
+.log-item.error { border-left: 3px solid #ef4444; }
+.log-item.info { border-left: 3px solid #3b82f6; }
+
+/* Temizle Butonu Tasarımı */
+.clear-logs-btn {
+  background: transparent;
+  border: 1px solid #334155;
+  color: #94a3b8;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.clear-logs-btn:hover {
+  background-color: #ef4444;
+  color: #ffffff;
+  border-color: #ef4444;
+}
