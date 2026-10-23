@@ -1,0 +1,14 @@
+services:
+  fhe-server:
+    build: .
+    container_name: fhe_server_container
+    command: python server_app.py
+    ports:
+      - "8001:8001"
+
+  fhe-client:
+    build: .
+    container_name: fhe_client_container
+    command: python client_app.py
+    ports:
+      - "8000:8000"
