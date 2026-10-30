@@ -23,6 +23,7 @@ const truncatePayload = (hexString, prefixLen = 140, suffixLen = 60) => {
   return `${start}\n\n. . .\n\n${end}`;
 };
 
+// İkonlar
 const ShieldIcon = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>);
 const KeyIcon = () => (<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21 2-2 2m-1.5 1.5L14 9l-2-2-4 4 2 2-3 3H3v4h4v-3l3-3 2 2 4-4-1.5-1.5z"/></svg>);
 const LockIcon = () => (<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>);
@@ -37,6 +38,7 @@ const CheckSmallIcon = () => (<svg width="14" height="14" viewBox="0 0 24 24" fi
 const CopyIcon = () => (<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>);
 const AlertTriangleIcon = () => (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>);
 const SpinnerIcon = () => (<svg className="spinner-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>);
+const HistoryIcon = () => (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>);
 
 function App() {
   const [financialData, setFinancialData] = useState(null);
@@ -61,10 +63,10 @@ function App() {
   const [modalError, setModalError] = useState('');
   const [errorAlert, setErrorAlert] = useState(null);
 
-  // İşlem Geçmişi State'i
+  // İşlem Geçmişi State'leri
   const [logs, setLogs] = useState([]);
+  const [isLogOpen, setIsLogOpen] = useState(false); 
 
-  // Log ekleme fonksiyonu
   const addLog = (message, type = 'info') => {
     const time = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     setLogs(prev => [...prev, { time, message, type }]);
@@ -95,30 +97,24 @@ function App() {
         const worksheet = workbook.Sheets[workbook.SheetNames[0]];
         const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-        // 1. KONTROL: Excel tamamen boş mu?
         if (!jsonData || jsonData.length === 0) {
           throw new Error("Hata: Yüklenen Excel dosyası tamamen boş.");
         }
 
         const processedData = [];
 
-        // 2. KONTROL: Verilerde eksik veya alakasız (metin/harf) hücre var mı?
         for (let i = 0; i < jsonData.length; i++) {
           const row = jsonData[i];
-          
-          // Sütun ismine veya sayısına bakmadan direkt o satırdaki ilk 3 veriyi alır
           const values = Object.values(row);
           const cashVal = values[0];
           const debtVal = values[1];
           const incomeVal = values[2];
 
-          // Hücrelerden biri boşsa veya tanımsızsa
           if (cashVal === undefined || debtVal === undefined || incomeVal === undefined || 
               cashVal === "" || debtVal === "" || incomeVal === "") {
             throw new Error(`Satır ${i + 2}: Eksik veri bulundu. Lütfen boş hücre bırakmayın.`);
           }
 
-          // Hücredeki veri rakam değilse (örneğin kelime yazılmışsa)
           if (isNaN(Number(cashVal)) || isNaN(Number(debtVal)) || isNaN(Number(incomeVal))) {
             throw new Error(`Satır ${i + 2}: Hatalı veri formatı. Finansal değerler sadece rakam olmalıdır.`);
           }
@@ -141,8 +137,6 @@ function App() {
         setFinancialData(null);
         setUploadedFileName("");
         addLog("Dosya içeriği reddedildi.", "error");
-        
-        // Çirkin alert(error.message) yerine kendi state'imizi tetikliyoruz:
         setErrorAlert(error.message); 
       }
     };
@@ -162,7 +156,7 @@ function App() {
     setIsGeneratingKeys(true);
     setKeyStatus(null);
     setEncryptError(null); 
-    addLog("Yerel kasada FHE anahtarları üretiliyor...", "warning"); // YENİ LOG
+    addLog("Yerel kasada FHE anahtarları üretiliyor...", "warning");
     
     try {
       const response = await fetch("http://127.0.0.1:8000/generate_keys");
@@ -170,12 +164,12 @@ function App() {
       await response.json();
       setKeyStatus('success');
       setKeysGenerated(true);
-      addLog("Kriptografik anahtarlar başarıyla oluşturuldu.", "success"); // YENİ LOG
+      addLog("Kriptografik anahtarlar başarıyla oluşturuldu.", "success");
       setTimeout(() => setKeyStatus(null), 3000);
     } catch (error) {
       console.error("Key generation failed:", error);
       setKeyStatus('error');
-      addLog("Anahtar üretimi başarısız oldu.", "error"); // YENİ LOG
+      addLog("Anahtar üretimi başarısız oldu.", "error");
     } finally {
       setIsGeneratingKeys(false);
     }
@@ -201,11 +195,11 @@ function App() {
       
       const data = await response.json();
       setEncryptedPayload(data.encrypted_payload);
-      addLog("1. satır verisi LWE şeması ile başarıyla şifrelendi.", "success"); // YENİ LOG
+      addLog("1. satır verisi LWE şeması ile başarıyla şifrelendi.", "success");
     } catch (error) {
       console.error("Encryption failed:", error);
       setEncryptError("Lütfen işlemi şifrelemeden önce 'Kriptografik Anahtar Üret' butonuna basarak anahtarlarınızı oluşturun.");
-      addLog("Şifreleme işlemi başarısız oldu. Anahtar eksik olabilir.", "error"); // YENİ LOG
+      addLog("Şifreleme işlemi başarısız oldu. Anahtar eksik olabilir.", "error");
     }
   };
 
@@ -217,7 +211,7 @@ function App() {
     setUploadProgress({ percentage: 0, loadedMB: '0.00 MB', totalMB: '0.00 MB' });
     setModalError('');
     setIsProcessing(true);
-    addLog("Şifreli veri uzak sunucuya değerlendirme için iletiliyor...", "info"); // YENİ LOG
+    addLog("Şifreli veri uzak sunucuya değerlendirme için iletiliyor...", "info");
 
     try {
       const keysResponse = await fetch("http://127.0.0.1:8000/get_evaluation_keys");
@@ -251,7 +245,7 @@ function App() {
 
       setEncryptedResult(response.data.encrypted_result_hex);
       setModalStep('success');
-      addLog("Sunucu kör (blind) hesaplamayı tamamladı ve sonucu iletti.", "success"); // YENİ LOG
+      addLog("Sunucu kör (blind) hesaplamayı tamamladı ve sonucu iletti.", "success");
       
       setTimeout(() => {
         setModalOpen(false);
@@ -264,7 +258,7 @@ function App() {
       setModalError(message);
       setModalStep('error');
       setIsProcessing(false);
-      addLog("Uzak sunucu iletişimi veya hesaplama başarısız oldu.", "error"); // YENİ LOG
+      addLog("Uzak sunucu iletişimi veya hesaplama başarısız oldu.", "error");
     }
   };
 
@@ -284,13 +278,13 @@ function App() {
       const data = await response.json();
       setFinalResult(data.decrypted_result);
       
-      const verdict = data.decrypted_result === 1 ? "REDDEDİLDİ" : "ONAYLANDI"; // YENİ LOG
-      addLog(`Nihai kredi kararı yerel kasada deşifre edildi: ${verdict}`, "success"); // YENİ LOG
+      const verdict = data.decrypted_result === 1 ? "REDDEDİLDİ" : "ONAYLANDI";
+      addLog(`Nihai kredi kararı yerel kasada deşifre edildi: ${verdict}`, "success");
       
     } catch (error) {
       console.error("Decryption failed:", error);
       alert("Decryption process failed.");
-      addLog("Deşifreleme işlemi başarısız oldu.", "error"); // YENİ LOG
+      addLog("Deşifreleme işlemi başarısız oldu.", "error");
     }
   };
 
@@ -326,16 +320,32 @@ function App() {
           </div>
         </div>
 
-        <div className="window-controls">
-          <button className="win-btn minimize" onClick={() => ipcRenderer?.send('window-minimize')} title="Küçült">
-            &#8211;
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginLeft: 'auto' }}>
+          <button 
+            onClick={() => setIsLogOpen(true)} // Tıklanırsa her türlü açar.
+            style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)',
+              color: '#fff', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '500',
+              transition: 'background-color 0.2s', outline: 'none', WebkitAppRegion: 'no-drag'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)'}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'}
+          >
+            <HistoryIcon /> İşlem Geçmişi
           </button>
-          <button className="win-btn maximize" onClick={() => ipcRenderer?.send('window-maximize')} title="Büyüt">
-            &#9723;
-          </button>
-          <button className="win-btn close" onClick={() => ipcRenderer?.send('window-close')} title="Kapat">
-            &#10005;
-          </button>
+          
+          <div className="window-controls">
+            <button className="win-btn minimize" onClick={() => ipcRenderer?.send('window-minimize')} title="Küçült" style={{WebkitAppRegion: 'no-drag'}}>
+              &#8211;
+            </button>
+            <button className="win-btn maximize" onClick={() => ipcRenderer?.send('window-maximize')} title="Büyüt" style={{WebkitAppRegion: 'no-drag'}}>
+              &#9723;
+            </button>
+            <button className="win-btn close" onClick={() => ipcRenderer?.send('window-close')} title="Kapat" style={{WebkitAppRegion: 'no-drag'}}>
+              &#10005;
+            </button>
+          </div>
         </div>
       </header>
 
@@ -710,27 +720,82 @@ function App() {
         </footer>
       </main>
 
-      {/* Sabit (Fixed) İşlem Geçmişi Paneli - Sadece Tam Ekranda Görünür */}
-      <aside className="audit-sidebar-fixed">
-        <div className="audit-header" style={{ justifyContent: 'space-between' }}>
+      {isLogOpen && (
+        <div 
+          onClick={() => setIsLogOpen(false)}
+          style={{
+            position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+            backgroundColor: 'rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(2px)',
+            zIndex: 9998, transition: 'all 0.3s ease', cursor: 'pointer'
+          }}
+        />
+      )}
+
+      {/* PANELDEN ÇIKINCA İŞLEM GEÇMİŞİ BUTONUNU ENGELLEMEMESİ İÇİN POINTER-EVENTS NONE VE VISIBILITY HIDDEN EKLENDİ */}
+      <aside 
+        className="audit-sidebar-fixed"
+        style={{
+          position: 'fixed', top: 0, right: 0, height: '100vh', width: '320px', maxWidth: '85vw',
+          backgroundColor: '#151521', borderLeft: '1px solid rgba(255, 255, 255, 0.05)',
+          boxShadow: isLogOpen ? '-5px 0 25px rgba(0, 0, 0, 0.5)' : 'none',
+          zIndex: 9999, display: 'flex', flexDirection: 'column',
+          transform: isLogOpen ? 'translateX(0)' : 'translateX(100%)',
+          visibility: isLogOpen ? 'visible' : 'hidden', 
+          pointerEvents: isLogOpen ? 'auto' : 'none',
+          transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.3s'
+        }}
+      >
+        <div className="audit-header" style={{ 
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+          padding: '20px', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' 
+        }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span className="audit-icon">&#128196;</span>
-            <h3>İşlem Geçmişi</h3>
+            <h3 style={{ margin: 0, color: '#fff', fontSize: '15px' }}>İşlem Geçmişi</h3>
           </div>
-          {logs.length > 0 && (
-            <button onClick={() => setLogs([])} className="clear-logs-btn" title="Logları Temizle">
-              Temizle
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {logs.length > 0 && (
+              <button 
+                onClick={() => setLogs([])} 
+                title="Logları Temizle"
+                style={{
+                  background: 'none', border: '1px solid rgba(255, 255, 255, 0.2)', color: '#a0a0b0',
+                  padding: '4px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', transition: '0.2s',
+                  WebkitAppRegion: 'no-drag'
+                }}
+                onMouseOver={(e) => e.target.style.color = '#fff'}
+                onMouseOut={(e) => e.target.style.color = '#a0a0b0'}
+              >
+                Temizle
+              </button>
+            )}
+            
+            {/* ÇARPI BUTONUNUN ÇALIŞMASI İÇİN Z-INDEX, POSITION VE PADDING DÜZELTİLDİ */}
+            <button 
+              onClick={() => setIsLogOpen(false)} 
+              style={{ 
+                background: 'none', border: 'none', color: '#a0a0b0', cursor: 'pointer', 
+                fontSize: '20px', padding: '10px', WebkitAppRegion: 'no-drag',
+                position: 'relative', zIndex: 99999
+              }}
+              onMouseOver={(e) => e.target.style.color = '#fff'}
+              onMouseOut={(e) => e.target.style.color = '#a0a0b0'}
+            >
+              ✕
             </button>
-          )}
+          </div>
         </div>
-        <div className="audit-content">
+        
+        <div className="audit-content" style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
           {logs.length === 0 ? (
-            <div className="empty-log">Henüz işlem yapılmadı...</div>
+            <div className="empty-log" style={{ color: '#6b6b80', textAlign: 'center', marginTop: '20px' }}>Henüz işlem yapılmadı...</div>
           ) : (
             logs.map((log, index) => (
-              <div key={index} className={`log-item ${log.type}`}>
-                <span className="log-time">[{log.time}]</span>
-                <span className="log-message">{log.message}</span>
+              <div key={index} className={`log-item ${log.type}`} style={{ marginBottom: '12px', fontSize: '13px', lineHeight: '1.4' }}>
+                <span className="log-time" style={{ color: '#a0a0b0', marginRight: '6px' }}>[{log.time}]</span>
+                <span className="log-message" style={{ color: log.type === 'error' ? '#ff4d4d' : log.type === 'success' ? '#4ade80' : log.type === 'warning' ? '#fbbf24' : '#fff' }}>
+                  {log.message}
+                </span>
               </div>
             ))
           )}
@@ -746,7 +811,6 @@ function App() {
         onClose={handleModalClose}
       />
 
-      {/* ÖZEL HATA PENCERESİ (MODAL) */}
       {errorAlert && (
         <div style={{
           position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
@@ -759,25 +823,17 @@ function App() {
             padding: "30px", maxWidth: "450px", width: "90%", textAlign: "center",
             color: "#fff", fontFamily: "system-ui, sans-serif"
           }}>
-            {/* Kırmızı Uyarı İkonu */}
             <svg style={{ width: "50px", height: "50px", color: "#ff4d4d", margin: "0 auto 15px" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
             </svg>
-            
-            <h3 style={{ fontSize: "20px", fontWeight: "600", margin: "0 0 10px", color: "#ff4d4d" }}>
-              Veri Bütünlüğü İhlali
-            </h3>
-            
-            <p style={{ fontSize: "15px", color: "#a0a0b0", lineHeight: "1.5", marginBottom: "25px" }}>
-              {errorAlert}
-            </p>
-            
+            <h3 style={{ fontSize: "20px", fontWeight: "600", margin: "0 0 10px", color: "#ff4d4d" }}>Veri Bütünlüğü İhlali</h3>
+            <p style={{ fontSize: "15px", color: "#a0a0b0", lineHeight: "1.5", marginBottom: "25px" }}>{errorAlert}</p>
             <button 
               onClick={() => setErrorAlert(null)}
               style={{
                 backgroundColor: "#ff4d4d", color: "#fff", border: "none",
                 padding: "10px 25px", borderRadius: "6px", fontSize: "14px",
-                fontWeight: "600", cursor: "pointer", transition: "background 0.2s"
+                fontWeight: "600", cursor: "pointer", transition: "background 0.2s", WebkitAppRegion: 'no-drag'
               }}
               onMouseOver={(e) => e.target.style.backgroundColor = "#ff3333"}
               onMouseOut={(e) => e.target.style.backgroundColor = "#ff4d4d"}
