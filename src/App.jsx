@@ -40,6 +40,10 @@ const AlertTriangleIcon = () => (<svg width="32" height="32" viewBox="0 0 24 24"
 const SpinnerIcon = () => (<svg className="spinner-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>);
 const HistoryIcon = () => (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>);
 
+// YENİ: Gizlilik (Göz) İkonları
+const EyeIcon = () => (<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>);
+const EyeOffIcon = () => (<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>);
+
 function App() {
   const [financialData, setFinancialData] = useState(null);
   const [uploadedFileName, setUploadedFileName] = useState("");
@@ -63,9 +67,11 @@ function App() {
   const [modalError, setModalError] = useState('');
   const [errorAlert, setErrorAlert] = useState(null);
 
-  // İşlem Geçmişi State'leri
   const [logs, setLogs] = useState([]);
   const [isLogOpen, setIsLogOpen] = useState(false); 
+  
+  // YENİ: Ekran Gizliliği Durumu
+  const [isPrivacyOn, setIsPrivacyOn] = useState(false);
 
   const addLog = (message, type = 'info') => {
     const time = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -322,7 +328,7 @@ function App() {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginLeft: 'auto' }}>
           <button 
-            onClick={() => setIsLogOpen(true)} // Tıklanırsa her türlü açar.
+            onClick={() => setIsLogOpen(true)}
             style={{
               backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)',
               color: '#fff', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer',
@@ -480,42 +486,67 @@ function App() {
 
               <div className="card-header-right">
                 <div className="toolbar-btn-group">
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                  
+                  {/* YENİ: Gizlilik Butonu (Anahtar Üret ve diğerlerinin yanına, aynı gruba eklendi) */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
                     <button
-                      onClick={generateKeys}
-                      disabled={isGeneratingKeys || keysGenerated}
-                      className={`btn btn-amber${isGeneratingKeys ? ' btn-loading' : ''} ${keysGenerated ? 'btn-disabled' : ''}`}
-                      style={keysGenerated ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
+                      onClick={() => setIsPrivacyOn(prev => !prev)}
+                      style={{
+                        backgroundColor: isPrivacyOn ? 'rgba(74, 222, 128, 0.1)' : 'transparent',
+                        border: `1px solid ${isPrivacyOn ? 'rgba(74, 222, 128, 0.3)' : 'rgba(255, 255, 255, 0.15)'}`,
+                        color: isPrivacyOn ? '#4ade80' : '#a0a0b0',
+                        padding: '9px 14px', borderRadius: '6px', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '500',
+                        transition: 'all 0.2s ease', height: 'fit-content'
+                      }}
+                      onMouseOver={(e) => {
+                        if(!isPrivacyOn) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+                      }}
+                      onMouseOut={(e) => {
+                        if(!isPrivacyOn) e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
                     >
-                      {isGeneratingKeys ? (
-                        <><SpinnerIcon /> Üretiliyor...</>
-                      ) : keysGenerated ? (
-                        <><CheckSmallIcon /> Anahtarlar RAM'de Aktif</>
-                      ) : (
-                        <><KeyIcon /> Kriptografik Anahtar Üret</>
-                      )}
+                      {isPrivacyOn ? <EyeOffIcon /> : <EyeIcon />}
+                      {isPrivacyOn ? "Gizlilik Aktif" : "Değerleri Gizle"}
                     </button>
-                    
-                    {isGeneratingKeys && (
-                      <div className="keygen-status-banner">
-                        <SpinnerIcon /> Evaluation & Secret Key hesaplanıyor...
-                      </div>
-                    )}
-                    {keyStatus === 'success' && (
-                      <div className="keygen-status-banner" style={{ color: '#4ade80' }}>
-                        <CheckSmallIcon /> Anahtarlar başarıyla üretildi!
-                      </div>
-                    )}
-                    {keyStatus === 'error' && (
-                      <div className="keygen-status-banner" style={{ color: '#f87171' }}>
-                        <AlertTriangleIcon /> Anahtar üretimi başarısız oldu.
-                      </div>
-                    )}
-                    {encryptError && (
-                      <div className="keygen-status-banner" style={{ color: '#f87171', maxWidth: '300px', textAlign: 'right' }}>
-                        <AlertTriangleIcon /> {encryptError}
-                      </div>
-                    )}
+
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                      <button
+                        onClick={generateKeys}
+                        disabled={isGeneratingKeys || keysGenerated}
+                        className={`btn btn-amber${isGeneratingKeys ? ' btn-loading' : ''} ${keysGenerated ? 'btn-disabled' : ''}`}
+                        style={keysGenerated ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
+                      >
+                        {isGeneratingKeys ? (
+                          <><SpinnerIcon /> Üretiliyor...</>
+                        ) : keysGenerated ? (
+                          <><CheckSmallIcon /> Anahtarlar RAM'de Aktif</>
+                        ) : (
+                          <><KeyIcon /> Kriptografik Anahtar Üret</>
+                        )}
+                      </button>
+                      
+                      {isGeneratingKeys && (
+                        <div className="keygen-status-banner">
+                          <SpinnerIcon /> Evaluation & Secret Key hesaplanıyor...
+                        </div>
+                      )}
+                      {keyStatus === 'success' && (
+                        <div className="keygen-status-banner" style={{ color: '#4ade80' }}>
+                          <CheckSmallIcon /> Anahtarlar başarıyla üretildi!
+                        </div>
+                      )}
+                      {keyStatus === 'error' && (
+                        <div className="keygen-status-banner" style={{ color: '#f87171' }}>
+                          <AlertTriangleIcon /> Anahtar üretimi başarısız oldu.
+                        </div>
+                      )}
+                      {encryptError && (
+                        <div className="keygen-status-banner" style={{ color: '#f87171', maxWidth: '300px', textAlign: 'right' }}>
+                          <AlertTriangleIcon /> {encryptError}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <button 
@@ -557,9 +588,12 @@ function App() {
                               <span className="row-num">#{index + 1}</span>
                             )}
                           </td>
-                          <td>{row.Cash}</td>
-                          <td>{row.Debt}</td>
-                          <td className="td-divider">{row.Income}</td>
+                          {/* YENİ: Gizlilik açık ise '***' yaz, kapalı ise değeri yaz */}
+                          <td>{isPrivacyOn ? '***' : row.Cash}</td>
+                          <td>{isPrivacyOn ? '***' : row.Debt}</td>
+                          <td className="td-divider">{isPrivacyOn ? '***' : row.Income}</td>
+                          
+                          {/* Sağ taraftaki kuantize veriler model mantığını göstermek için hep açık kalır */}
                           <td><span className="badge-q-pill">{row.Cash_Q}</span></td>
                           <td><span className="badge-q-pill">{row.Debt_Q}</span></td>
                           <td><span className="badge-q-pill">{row.Income_Q}</span></td>
@@ -731,7 +765,6 @@ function App() {
         />
       )}
 
-      {/* PANELDEN ÇIKINCA İŞLEM GEÇMİŞİ BUTONUNU ENGELLEMEMESİ İÇİN POINTER-EVENTS NONE VE VISIBILITY HIDDEN EKLENDİ */}
       <aside 
         className="audit-sidebar-fixed"
         style={{
@@ -770,7 +803,6 @@ function App() {
               </button>
             )}
             
-            {/* ÇARPI BUTONUNUN ÇALIŞMASI İÇİN Z-INDEX, POSITION VE PADDING DÜZELTİLDİ */}
             <button 
               onClick={() => setIsLogOpen(false)} 
               style={{ 
