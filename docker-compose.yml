@@ -5,6 +5,7 @@ services:
     command: python server_app.py
     ports:
       - "8001:8001"
+    restart: unless-stopped
 
   fhe-client:
     build: .
@@ -12,3 +13,4 @@ services:
     command: python client_app.py
     ports:
       - "8000:8000"
+    restart: unless-stopped

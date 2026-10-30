@@ -53,11 +53,13 @@ function App() {
   const [copiedPayload, setCopiedPayload] = useState(false);
   const [copiedResult, setCopiedResult] = useState(false);
   const [isGeneratingKeys, setIsGeneratingKeys] = useState(false);
+  const [keysGenerated, setKeysGenerated] = useState(false);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [modalStep, setModalStep] = useState('preparing');
   const [uploadProgress, setUploadProgress] = useState({ percentage: 0, loadedMB: '0.00 MB', totalMB: '0.00 MB' });
   const [modalError, setModalError] = useState('');
+  const [errorAlert, setErrorAlert] = useState(null);
 
   // İşlem Geçmişi State'i
   const [logs, setLogs] = useState([]);
@@ -87,23 +89,64 @@ function App() {
 
     const reader = new FileReader();
     reader.onload = (e) => {
-      const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
-      const firstSheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[firstSheetName];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet);
-      
-      const processedData = jsonData.map(row => {
-        return {
-          ...row,
-          Cash_Q: quantizeValue(row.Cash, SCALING_PARAMS.Cash.min, SCALING_PARAMS.Cash.max),
-          Debt_Q: quantizeValue(row.Debt, SCALING_PARAMS.Debt.min, SCALING_PARAMS.Debt.max),
-          Income_Q: quantizeValue(row.Income, SCALING_PARAMS.Income.min, SCALING_PARAMS.Income.max),
-        };
-      });
-      setFinancialData(processedData);
-      addLog(`"${file.name}" başarıyla yüklendi ve kuantize edildi.`, "success"); // YENİ LOG
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+        // 1. KONTROL: Excel tamamen boş mu?
+        if (!jsonData || jsonData.length === 0) {
+          throw new Error("Hata: Yüklenen Excel dosyası tamamen boş.");
+        }
+
+        const processedData = [];
+
+        // 2. KONTROL: Verilerde eksik veya alakasız (metin/harf) hücre var mı?
+        for (let i = 0; i < jsonData.length; i++) {
+          const row = jsonData[i];
+          
+          // Sütun ismine veya sayısına bakmadan direkt o satırdaki ilk 3 veriyi alır
+          const values = Object.values(row);
+          const cashVal = values[0];
+          const debtVal = values[1];
+          const incomeVal = values[2];
+
+          // Hücrelerden biri boşsa veya tanımsızsa
+          if (cashVal === undefined || debtVal === undefined || incomeVal === undefined || 
+              cashVal === "" || debtVal === "" || incomeVal === "") {
+            throw new Error(`Satır ${i + 2}: Eksik veri bulundu. Lütfen boş hücre bırakmayın.`);
+          }
+
+          // Hücredeki veri rakam değilse (örneğin kelime yazılmışsa)
+          if (isNaN(Number(cashVal)) || isNaN(Number(debtVal)) || isNaN(Number(incomeVal))) {
+            throw new Error(`Satır ${i + 2}: Hatalı veri formatı. Finansal değerler sadece rakam olmalıdır.`);
+          }
+
+          processedData.push({
+            Cash: Number(cashVal),
+            Debt: Number(debtVal),
+            Income: Number(incomeVal),
+            Cash_Q: quantizeValue(Number(cashVal), SCALING_PARAMS.Cash.min, SCALING_PARAMS.Cash.max),
+            Debt_Q: quantizeValue(Number(debtVal), SCALING_PARAMS.Debt.min, SCALING_PARAMS.Debt.max),
+            Income_Q: quantizeValue(Number(incomeVal), SCALING_PARAMS.Income.min, SCALING_PARAMS.Income.max),
+          });
+        }
+
+        setFinancialData(processedData);
+        addLog(`"${file.name}" başarıyla yüklendi.`, "success");
+
+      } catch (error) {
+        console.error("Veri doğrulama hatası:", error);
+        setFinancialData(null);
+        setUploadedFileName("");
+        addLog("Dosya içeriği reddedildi.", "error");
+        
+        // Çirkin alert(error.message) yerine kendi state'imizi tetikliyoruz:
+        setErrorAlert(error.message); 
+      }
     };
+    
     reader.readAsArrayBuffer(file);
   };
 
@@ -126,6 +169,7 @@ function App() {
       if (!response.ok) throw new Error("Sunucu hatası");
       await response.json();
       setKeyStatus('success');
+      setKeysGenerated(true);
       addLog("Kriptografik anahtarlar başarıyla oluşturuldu.", "success"); // YENİ LOG
       setTimeout(() => setKeyStatus(null), 3000);
     } catch (error) {
@@ -429,11 +473,14 @@ function App() {
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
                     <button
                       onClick={generateKeys}
-                      disabled={isGeneratingKeys}
-                      className={`btn btn-amber${isGeneratingKeys ? ' btn-loading' : ''}`}
+                      disabled={isGeneratingKeys || keysGenerated}
+                      className={`btn btn-amber${isGeneratingKeys ? ' btn-loading' : ''} ${keysGenerated ? 'btn-disabled' : ''}`}
+                      style={keysGenerated ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
                     >
                       {isGeneratingKeys ? (
                         <><SpinnerIcon /> Üretiliyor...</>
+                      ) : keysGenerated ? (
+                        <><CheckSmallIcon /> Anahtarlar RAM'de Aktif</>
                       ) : (
                         <><KeyIcon /> Kriptografik Anahtar Üret</>
                       )}
@@ -698,6 +745,48 @@ function App() {
         onRetry={handleModalRetry}
         onClose={handleModalClose}
       />
+
+      {/* ÖZEL HATA PENCERESİ (MODAL) */}
+      {errorAlert && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+          backgroundColor: "rgba(0, 0, 0, 0.75)", backdropFilter: "blur(4px)",
+          display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999
+        }}>
+          <div style={{
+            backgroundColor: "#1e1e2d", border: "1px solid #ff4d4d", 
+            boxShadow: "0 0 20px rgba(255, 77, 77, 0.2)", borderRadius: "12px",
+            padding: "30px", maxWidth: "450px", width: "90%", textAlign: "center",
+            color: "#fff", fontFamily: "system-ui, sans-serif"
+          }}>
+            {/* Kırmızı Uyarı İkonu */}
+            <svg style={{ width: "50px", height: "50px", color: "#ff4d4d", margin: "0 auto 15px" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+            
+            <h3 style={{ fontSize: "20px", fontWeight: "600", margin: "0 0 10px", color: "#ff4d4d" }}>
+              Veri Bütünlüğü İhlali
+            </h3>
+            
+            <p style={{ fontSize: "15px", color: "#a0a0b0", lineHeight: "1.5", marginBottom: "25px" }}>
+              {errorAlert}
+            </p>
+            
+            <button 
+              onClick={() => setErrorAlert(null)}
+              style={{
+                backgroundColor: "#ff4d4d", color: "#fff", border: "none",
+                padding: "10px 25px", borderRadius: "6px", fontSize: "14px",
+                fontWeight: "600", cursor: "pointer", transition: "background 0.2s"
+              }}
+              onMouseOver={(e) => e.target.style.backgroundColor = "#ff3333"}
+              onMouseOut={(e) => e.target.style.backgroundColor = "#ff4d4d"}
+            >
+              Anladım
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }

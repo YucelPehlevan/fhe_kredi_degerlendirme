@@ -5,3 +5,19 @@ dist
 dist_python
 .artifacts
 mock_financial_data.xlsx
+
+# concrete 
+.concrete
+.concrete/
+**/*.keys
+
+# frontend
+src/
+public/
+package.json
+package-lock.json
+*.jsx
+*.css
+*.html
+out/
+build/

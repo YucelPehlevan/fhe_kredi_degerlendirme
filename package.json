@@ -40,6 +40,13 @@
     "directories": {
       "output": "release"
     },
+    "extraResources": [
+      "docker-compose.yml",
+      "Dockerfile",
+      "client_app.py",
+      "server_app.py",
+      "0_preparation.py"
+    ],
     "win": {
       "target": "nsis"
     }
