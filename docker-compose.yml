@@ -8,6 +8,7 @@ services:
     restart: unless-stopped
 
   fhe-client:
+    image: fhe-client-image
     build: .
     container_name: fhe_client_container
     command: python client_app.py
