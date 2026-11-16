@@ -1,31 +1,39 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-node_modules
-dist
-dist-ssr
-*.local
-
-# Electron Build Outputs
+﻿# Bağımlılıklar ve Derleme Çıktıları
+node_modules/
+dist/
 release/
 out/
-dist-electron/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+# Dev Docker İmaj Arşivleri (GitHub 100 MB sınırı)
+*.tar
+*.tar.gz
+*.zip
+!deployment/client.zip
+!deployment/server.zip
+
+# Gizlilik, Güvenlik ve Model Eğitim Dosyaları
+.env
+.env.*
+*.pem
+*.key
+*.log
+npm-debug.log*
+0_preparation.py
+deployment/tree_params.json
+
+# Finansal Mizan ve Eğitim Veri Dosyaları
+*.xlsx
+*.xls
+
+# İşletim Sistemi ve Editör Kalıntıları
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+Thumbs.db
+.vscode/
+~$*
 
-
+deployment/scaling_config.json

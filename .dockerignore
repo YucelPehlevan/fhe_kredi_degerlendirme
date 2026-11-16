@@ -1,23 +1,8 @@
 node_modules
-__pycache__
-.git
 dist
-dist_python
-.artifacts
-mock_financial_data.xlsx
-
-# concrete 
-.concrete
-.concrete/
-**/*.keys
-
-# frontend
-src/
-public/
-package.json
-package-lock.json
-*.jsx
-*.css
-*.html
-out/
-build/
+release
+out
+.git
+__pycache__
+*.tar
+*.tar.gz
