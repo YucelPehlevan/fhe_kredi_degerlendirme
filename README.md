@@ -1,91 +1,113 @@
-🛡️ Aegis FHE: Zero-Trust Enterprise Financial Risk Evaluation Terminal
-Aegis FHE is a desktop credit evaluation terminal based on Fully Homomorphic Encryption (TFHE) that analyzes enterprise customers' trial balance and balance sheet data without sending them in plaintext to bank servers.
+🛡️ Aegis FHE: Sıfır Güven (Zero-Trust) Kurumsal Finansal Risk Değerlendirme Terminali
 
-Unlike traditional systems, the remote server in this architecture never needs to decrypt the data to process it. The server performs "Blind Evaluation" on the encrypted input to generate a credit risk score and returns it in an encrypted format. The data and the final decision are only decrypted locally on the client's (customer's) own device.
+Aegis FHE, Tam Homomorfik Şifreleme (TFHE) altyapısıyla çalışan, yerel barındırmalı bir masaüstü kredi değerlendirme terminalidir. Finansal kuruluşların, kurumsal müşterilerinin mizan ve bilanço verilerini, banka sunucularına hiçbir zaman açık metin (plaintext) olarak ifşa etmeden değerlendirmesini sağlar.
 
-🏗️ System Architecture and Trust Boundaries
-The system consists of two main components that never trust each other (Zero-Trust). Due to TFHE constraints (dependencies in the Windows environment), the local encryption engine runs as an isolated "Vault" via Docker on the client machine.
+Yeni geliştirilen Çift Taraflı Kör (Double-Blind) Sıfır Güven Mimarisi sayesinde her iki taraf da korunur:
 
-1. Local Vault (Client - Port 8000)
-Secure Zone: An isolated Docker container running on the customer's own device.
+Müşteri Veri Gizliliği: Uzak banka sunucusu, verileri tamamen şifreli bir durumda işler (Kör Değerlendirme / Blind Evaluation) ve müşterinin gerçek finansal rakamlarını asla görmez.
 
-Generation of cryptographic keys (Secret Key and Evaluation Key).
+Banka Fikri Mülkiyet (IP) Koruması: Bankanın tescilli risk skorlama algoritması (Karar Ağacı eşikleri ve mantığı), sunucudaki kriptografik devrelere doğrudan derlenmiştir. İstemci uygulamasının bankanın karar kuralları hakkında hiçbir bilgisi yoktur.
 
-Reading raw Excel trial balance data and quantizing it to 4-bit (0-15) to meet TFHE limits.
+🏗️ Sistem Mimarisi ve Çift Taraflı Güven Sınırları
 
-Encrypting data with the Secret Key (LWE Ciphertext).
+Sistem, birbirine asla güvenmeyen iki izole bileşene kesin olarak ayrılmıştır. TFHE'nin yoğun C++ kriptografik bağımlılıkları nedeniyle, yerel şifreleme motoru, müşterinin makinesinde Electron arayüzü ile iletişim kuran hafif ve izole bir Docker konteyneri içinde çalışır.
 
-Decrypting the encrypted credit decision returned from the remote server.
+1. Yerel Kasa (Güvenli İstemci Alanı - Port 8000)
 
-2. Remote Bank Server (Remote Cloud - Port 8001)
-Insecure Zone: The model server hosted in the bank's cloud or remote data center.
+Müşterinin / şubenin yerel makinesinde güvenle çalışır.
 
-Accepts the encrypted payload (Ciphertext) and Evaluation Keys from the client.
+Veri İşleme: Yüklenen finansal mizan tablolarını (Excel) ayrıştırır ve 5 kritik TDHP rasyosunu hesaplar (Cari Oran, Nakit Oranı, Kaldıraç, Finansal Borç, Kâr Marjı).
 
-Executes the pre-trained FHE Decision Tree model on the encrypted data.
+Kuantizasyon (Ölçekleme): TFHE performans sınırlarına uymak için, hesaplanan rasyoları 4-bitlik (0–15) tamsayı uzayına sıkıştırır.
 
-Can never read/see the customer's financial statements or the decision it generates.
+Kriptografi: Geçici (ephemeral) kriptografik anahtarları (Gizli Anahtar ve Değerlendirme Anahtarı) tamamen RAM'de üretir. Kuantize edilmiş verileri LWE şifreli metinlerine (Ciphertext) dönüştürür.
 
-Returns only the encrypted result back to the client.
+Şifre Çözme: Bankadan dönen şifreli kararı alır ve yerel Gizli Anahtar'ı kullanarak nihai sonucu (0: ONAY, 1: RET) ortaya çıkarır.
 
-🔄 Encrypted Data and Process Flow
-The end-to-end data flow of the system is illustrated in the sequence diagram below:
+2. Uzak Banka Sunucusu (Güvensiz Bulut Alanı - Port 8001)
+
+Bankanın bulutunda veya veri merkezinde barındırılır.
+
+Durumsuz (Stateless) Değerlendirme: İstemciden gelen şifreli yükü (Ciphertext) ve Değerlendirme Anahtarlarını (Evaluation Keys) kabul eder.
+
+Gömülü IP Modeli: Önceden eğitilmiş FHE Karar Ağacı modelini, kriptografik bir devre (server.zip) olarak yerleşik şekilde çalıştırır. Hiçbir harici parametre dosyasına ihtiyaç duymaz; böylece bankanın skorlama algoritmasını (IP) tamamen korur.
+
+Sıfır Bilgi ile Dönüş: Yalnızca şifreli çıktıyı istemciye geri döndürür. Sunucu; girdiyi, izlenen mantık yolunu veya az önce ürettiği nihai kararı kesinlikle bilemez.
+
+🔄 Şifreli Veri ve Süreç Akışı
 
 sequenceDiagram
-    participant UI as Electron Interface
-    participant Vault as Local Vault (Port 8000)
-    participant Cloud as Bank Server (Port 8001)
+    participant UI as Electron Arayüzü
+    participant Vault as Yerel Kasa (Port 8000)
+    participant Cloud as Banka Sunucusu (Port 8001)
 
-    UI->>Vault: Upload Trial Balance (Cash, Debt, Income)
-    Note over Vault: Strict Data Validation & 4-bit Quantization
-    Vault->>Vault: Cryptographic Key Generation
-    Vault->>Vault: Encrypt Raw Data (Ciphertext)
-    UI->>Cloud: Send Encrypted Payload + Evaluation Keys
-    Note over Cloud: FHE Blind Decision Tree Evaluation
-    Cloud-->>UI: Encrypted Risk Verdict (Encrypted Output)
-    UI->>Vault: Decrypt Encrypted Output
-    Vault-->>UI: Final Verdict (0: Approved, 1: Rejected)
-🛠️ Tech Stack
-Frontend (Desktop Terminal)
-Framework: React.js + Vite (High-performance UI build).
+    UI->>Vault: Mizanı Yükle (Nakit, Borç, Gelir vb.)
+    Note over Vault: Sıkı Veri Doğrulama ve 4-bit Kuantizasyon
+    Vault->>Vault: Geçici Anahtar Üretimi (RAM'de)
+    Vault->>Vault: 5 TDHP Rasyosunu Şifrele (Ciphertext)
+    UI->>Cloud: Şifreli Veriyi + Değerlendirme Anahtarını Gönder
+    Note over Cloud: FHE Karar Ağacı Değerlendirmesi (Gömülü IP)
+    Cloud-->>UI: Şifreli Risk Kararı (Şifreli Çıktı)
+    UI->>Vault: Şifreli Çıktıyı Çöz
+    Vault-->>UI: Nihai Karar (0: ONAY, 1: RET)
 
-Desktop Engine: Electron.js (OS integration, .exe packaging).
 
-Data Processing: XLSX (Strict cell-index-based Excel validation algorithm).
+🛠️ Teknoloji Yığını
 
-UI/UX: Zero-Trust themed dark mode, custom notification modals, and a slide-in (Drawer) Audit Trail panel.
+Frontend (Masaüstü Terminali)
 
-Backend (Cryptography & AI)
-Language & API: Python 3.10, FastAPI, Uvicorn.
+Framework: React.js + Vite (Yüksek performanslı arayüz derlemesi)
 
-FHE Library: Zama concrete-python
+Masaüstü Motoru: Electron.js (İşletim sistemi entegrasyonu, .exe paketleme)
 
-Infrastructure: Docker & Docker Compose (Isolated environments for seamless execution of Python dependencies on Windows with cache optimization).
+Veri İşleme: Kolon başlığı değişikliklerine veya boş hücre açıklarına karşı bağışık, kesin hücre indeksine dayalı xlsx ayrıştırıcı.
 
-🔒 Key Features
-Strict Data Integrity: Uploaded trial balance spreadsheets are read directly via cell indices, completely independent of column header names. Empty files, missing cells, or undefined (text/character) financial data are strictly rejected with a custom error modal, preventing vulnerability loopholes where invalid data defaults to zero.
+UI/UX: Sıfır Güven temalı karanlık mod, gerçek zamanlı kriptografik görselleştiriciler ve yandan açılan Denetim İzi (Audit Trail) paneli.
 
-Automated Docker Process: Heavy Python/C++ FHE dependencies on the client side are isolated using docker-compose. With the restart: unless-stopped policy and .dockerignore optimizations, the system is resilient against crashes and highly optimized for build times.
+Backend (Kriptografi ve Yapay Zeka)
 
-Advanced Audit Trail: Every action performed on the application (file reading, encryption, key generation, server communication) is logged with a timestamp in the slide-in "Audit History" panel.
+Çekirdek Motor: Python 3.10, FastAPI, Uvicorn
 
-🚀 Developer Setup
-To set up and run the project in your local environment, follow these steps:
+FHE Kütüphanesi: concrete-ml / concrete-python (Zama)
 
-1. Start the Background FHE Services:
-Open a terminal in the project directory and start the Python/FastAPI servers. Build times are accelerated thanks to cache optimizations:
+Model Eğitimi: Sentetik TDHP rasyo üretimi (0_preparation.py) ve Concrete Compiler ile FHE devrelerine derleme işlemi.
 
-Bash
-docker-compose up --build -d
-(This command will start two separate containers on ports 8000 and 8001.)
+Altyapı: Docker ve Docker Compose (Önbellek optimizasyonu ile Windows üzerinde sorunsuz çalışma için izole ortamlar).
 
-2. Start the Desktop Interface:
+🔒 Temel Güvenlik Özellikleri
 
-Bash
+Gerçek Sıfır Güven (tree_params.json Yok): Model mantığı, sunucunun FHE devresine doğrudan derlenmiştir. İstemci, bankanın değerlendirme kriterlerine tamamen kördür.
+
+Sıkı Veri Bütünlüğü: Yüklenen tablolar kesin olarak hücre indeksleri üzerinden okunur. Tanımsız metinler, boş dosyalar veya eksik hücreler anında reddedilir; böylece geçersiz verinin "sıfır" kabul edilmesinden doğabilecek güvenlik açıkları engellenir.
+
+Bellek İçi (In-Memory) Kriptografi: Kriptografik anahtarlar RAM'de geçici olarak üretilir (KEYS_GENERATED_IN_RAM). Diske hiçbir zaman gizli anahtar yazılmaz.
+
+Gelişmiş Denetim İzi: Uygulama üzerinde yapılan her işlem (dosya okuma, şifreleme, anahtar üretimi, sunucu iletişimi), denetim ve regülasyon uyumluluğu için "İşlem Geçmişi" panelinde zaman damgasıyla günlüğe kaydedilir.
+
+🚀 Geliştirici Kurulumu
+
+Projeyi yerel geliştirme ortamınızda kurmak ve çalıştırmak için aşağıdaki adımları izleyin:
+
+1. Arka Plan FHE Servislerini Başlatın
+
+Proje dizininde bir terminal açın ve izole Python/FastAPI sunucularını başlatın. Derleme süreleri .dockerignore optimizasyonları sayesinde hızlandırılmıştır.
+
+# Hem Yerel Kasayı (Client) hem de Uzak Sunucuyu başlatır
+docker compose up --build -d
+
+
+(Bu komut Yerel Kasayı localhost:8000 portuna, Uzak Sunucuyu ise localhost:8001 portuna bağlar.)
+
+2. Masaüstü Arayüzünü Başlatın
+
+Ayrı bir terminalde Node bağımlılıklarını kurun ve Electron uygulamasını başlatın:
+
 npm install
 npm run dev
-3. Build for Production:
-To generate the installable Windows .exe file:
 
-Bash
+
+3. Prodüksiyon İçin Derleme
+
+Kurulabilir Windows .exe terminalini oluşturmak için:
+
 npm run build:exe
