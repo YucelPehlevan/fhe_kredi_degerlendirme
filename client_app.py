@@ -3,8 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from concrete import fhe
 from pydantic import BaseModel
+import numpy as np
 import uvicorn
-import json
 
 app = FastAPI(title="Yerel İstemci (Güvenli Kasa)")
 
@@ -18,10 +18,6 @@ app.add_middleware(
 CLIENT_DIR = "./deployment"
 client = fhe.Client.load(f"{CLIENT_DIR}/client.zip")
 
-with open(f"{CLIENT_DIR}/tree_params.json", "r", encoding="utf-8") as f:
-    tree_params = json.load(f)
-
-# 5 TDHP Rasyosu (0_preparation.py ile birebir aynı sıra)
 FEATURE_COLS = [
     "Cari_Oran_Q",
     "Nakit_Orani_Q",
@@ -30,7 +26,6 @@ FEATURE_COLS = [
     "Kar_Marji_Q",
 ]
 
-# SADECE RAM'DE ANAHTAR ÜRETİLDİĞİNDE AÇILACAK KİLİT
 KEYS_GENERATED_IN_RAM = False
 
 
@@ -66,16 +61,10 @@ async def encrypt_data(data: dict):
     if any(v < 0 or v > 15 for v in features):
         raise HTTPException(status_code=422, detail="Tüm kuantize değerler 0-15 aralığında olmalıdır.")
 
-    encrypted_tuple = client.encrypt(
-        features,
-        tree_params["enc_t"],
-        tree_params["enc_f"],
-        tree_params["enc_l"]
-    )
+    features_arr = np.array(features, dtype=np.int64)
+    encrypted_val = client.encrypt(features_arr)
 
-    hex_list = [val.serialize().hex() for val in encrypted_tuple]
-    combined_hex = ":".join(hex_list)
-    return {"encrypted_payload": combined_hex}
+    return {"encrypted_payload": encrypted_val.serialize().hex()}
 
 
 class DecryptPayload(BaseModel):
@@ -84,14 +73,9 @@ class DecryptPayload(BaseModel):
 
 @app.post("/decrypt")
 def decrypt_result(payload: DecryptPayload):
-    print("1. Encrypted result received from React UI for decryption...")
     serialized_bytes = bytes.fromhex(payload.encrypted_result_hex)
     encrypted_value = fhe.Value.deserialize(serialized_bytes)
-
-    print("2. Decrypting the result using the local secret key...")
     decrypted_result = client.decrypt(encrypted_value)
-
-    print(f"3. Decryption successful! Plain result: {decrypted_result}")
     return {"decrypted_result": int(decrypted_result)}
 
 
