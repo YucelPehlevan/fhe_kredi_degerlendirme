@@ -87,7 +87,7 @@ Bellek İçi Kriptografi: Kriptografik anahtarlar yalnızca RAM üzerinde geçic
 Gelişmiş Denetim İzi: Uygulama üzerinde gerçekleştirilen her adım (dosya okuma, anahtar üretimi, şifreleme, sunucu iletişimi ve karar çözme), denetim uyumluluğu için İşlem Geçmişi panelinde zaman damgasıyla kayıt altına alınır.
 
 <p align="center">
-  <img src="public/ideal-mimari.png" alt="FHE İdeal Sıfır Güven Mimarisi" width="900" />
+  <img src="public/ideal-mimari.jpg" alt="FHE İdeal Sıfır Güven Mimarisi" width="900" />
 </p>
 
 > **Mimari Not:** Yukarıdaki diyagram sistemin ideal kurumsal üretim mimarisini göstermektedir. Gerçek bir banka dağıtımında `deployment/server.zip` dosyası istemciye dağıtılmaz ve yalnızca uzak banka sunucusunda (`Port 8001`) tutulur; bu açık kaynak repoda ise projenin `docker compose up` komutuyla tek adımda uçtan uca test edilebilmesi için sentetik verilerle derlenmiş demo devresi olarak yer almaktadır.
