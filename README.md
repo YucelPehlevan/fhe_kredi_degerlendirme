@@ -1,113 +1,114 @@
-🛡️ Aegis FHE: Sıfır Güven (Zero-Trust) Kurumsal Finansal Risk Değerlendirme Terminali
+🛡️ Aegis FHE: Sıfır Güven Tabanlı Kurumsal Finansal Risk Değerlendirme Terminali
 
-Aegis FHE, Tam Homomorfik Şifreleme (TFHE) altyapısıyla çalışan, yerel barındırmalı bir masaüstü kredi değerlendirme terminalidir. Finansal kuruluşların, kurumsal müşterilerinin mizan ve bilanço verilerini, banka sunucularına hiçbir zaman açık metin (plaintext) olarak ifşa etmeden değerlendirmesini sağlar.
+⚠️ DEMO / KAVRAM KANITLAMA (PoC) SÜRÜMÜ: Bu proje, Tam Homomorfik Şifreleme (TFHE) mimarisinin kurumsal kredi skorlama süreçlerinde uçtan uca uygulanabilirliğini göstermek amacıyla geliştirilmiş bir demo uygulamasıdır. Yerel geliştirme ve sunum ortamında hem Müşteri Kasası (Port 8000) hem de Banka Sunucusu (Port 8001) simüle edilerek aynı makinede izole konteynerler halinde çalıştırılmaktadır.
 
-Yeni geliştirilen Çift Taraflı Kör (Double-Blind) Sıfır Güven Mimarisi sayesinde her iki taraf da korunur:
+Aegis FHE, Tam Homomorfik Şifreleme (TFHE) altyapısıyla çalışan, yerel barındırmalı bir masaüstü kredi değerlendirme terminalidir. Finansal kuruluşların, kurumsal müşterilerinin mizan ve bilanço verilerini banka sunucularına hiçbir zaman açık metin olarak ifşa etmeden analiz etmesini sağlar.
 
-Müşteri Veri Gizliliği: Uzak banka sunucusu, verileri tamamen şifreli bir durumda işler (Kör Değerlendirme / Blind Evaluation) ve müşterinin gerçek finansal rakamlarını asla görmez.
+Çift Taraflı Kör Sıfır Güven Mimarisi sayesinde süreçteki her iki tarafın gizliliği aynı anda korunur:
 
-Banka Fikri Mülkiyet (IP) Koruması: Bankanın tescilli risk skorlama algoritması (Karar Ağacı eşikleri ve mantığı), sunucudaki kriptografik devrelere doğrudan derlenmiştir. İstemci uygulamasının bankanın karar kuralları hakkında hiçbir bilgisi yoktur.
+Müşteri Veri Gizliliği: Uzak banka sunucusu, gelen verileri tamamen şifreli halde işler (Kör Değerlendirme) ve müşterinin gerçek finansal rakamlarını hiçbir aşamada göremez.
+
+Banka Fikri Mülkiyet (IP) Koruması: Bankanın tescilli risk skorlama algoritması (Karar Ağacı eşikleri ve karar mantığı), sunucudaki kriptografik devrelere doğrudan derlenmiştir. İstemci uygulamasının bankanın değerlendirme kuralları hakkında hiçbir bilgisi yoktur.
 
 🏗️ Sistem Mimarisi ve Çift Taraflı Güven Sınırları
 
-Sistem, birbirine asla güvenmeyen iki izole bileşene kesin olarak ayrılmıştır. TFHE'nin yoğun C++ kriptografik bağımlılıkları nedeniyle, yerel şifreleme motoru, müşterinin makinesinde Electron arayüzü ile iletişim kuran hafif ve izole bir Docker konteyneri içinde çalışır.
+Sistem, birbirine asla güvenmeyen iki izole bileşene ayrılmıştır. TFHE'nin yoğun C++ kriptografik bağımlılıkları nedeniyle yerel şifreleme motoru, müşterinin bilgisayarında masaüstü arayüzü ile haberleşen hafif ve izole bir Docker konteyneri içinde çalışır.
 
-1. Yerel Kasa (Güvenli İstemci Alanı - Port 8000)
+1. Yerel Kasa (Güvenli İstemci Alanı — Port 8000)
 
-Müşterinin / şubenin yerel makinesinde güvenle çalışır.
+Müşterinin veya şubenin yerel bilgisayarında güvenle çalışır.
 
-Veri İşleme: Yüklenen finansal mizan tablolarını (Excel) ayrıştırır ve 5 kritik TDHP rasyosunu hesaplar (Cari Oran, Nakit Oranı, Kaldıraç, Finansal Borç, Kâr Marjı).
+Veri İşleme: Yüklenen finansal mizan tablolarını (Excel) ayrıştırır ve 5 kritik TDHP finansal rasyosunu hesaplar (Cari Oran, Nakit Oranı, Kaldıraç Oranı, Finansal Borç Oranı, Net Kâr Marjı).
 
-Kuantizasyon (Ölçekleme): TFHE performans sınırlarına uymak için, hesaplanan rasyoları 4-bitlik (0–15) tamsayı uzayına sıkıştırır.
+Kuantizasyon (Ölçekleme): TFHE performans sınırlarına uymak için hesaplanan rasyoları 4-bitlik (0–15) tamsayı uzayına sıkıştırır.
 
-Kriptografi: Geçici (ephemeral) kriptografik anahtarları (Gizli Anahtar ve Değerlendirme Anahtarı) tamamen RAM'de üretir. Kuantize edilmiş verileri LWE şifreli metinlerine (Ciphertext) dönüştürür.
+Kriptografi: Geçici kriptografik anahtarları (Gizli Anahtar ve Değerlendirme Anahtarları) tamamen RAM üzerinde üretir. Ölçeklenmiş verileri şifreli veri paketlerine dönüştürür.
 
-Şifre Çözme: Bankadan dönen şifreli kararı alır ve yerel Gizli Anahtar'ı kullanarak nihai sonucu (0: ONAY, 1: RET) ortaya çıkarır.
+Şifre Çözme: Bankadan dönen şifreli kararı alır ve yalnızca yerel bellekte tutulan Gizli Anahtar'ı kullanarak nihai sonucu (0: ONAY, 1: RET) ortaya çıkarır.
 
-2. Uzak Banka Sunucusu (Güvensiz Bulut Alanı - Port 8001)
+2. Uzak Banka Sunucusu (Güvensiz Bulut Alanı — Port 8001)
 
-Bankanın bulutunda veya veri merkezinde barındırılır.
+Bankanın bulut altyapısında veya veri merkezinde barındırılır.
 
-Durumsuz (Stateless) Değerlendirme: İstemciden gelen şifreli yükü (Ciphertext) ve Değerlendirme Anahtarlarını (Evaluation Keys) kabul eder.
+Durumsuz Değerlendirme: İstemciden gelen şifreli veri paketini ve Değerlendirme Anahtarlarını kabul eder; hiçbir müşteri verisini diske kaydetmez.
 
-Gömülü IP Modeli: Önceden eğitilmiş FHE Karar Ağacı modelini, kriptografik bir devre (server.zip) olarak yerleşik şekilde çalıştırır. Hiçbir harici parametre dosyasına ihtiyaç duymaz; böylece bankanın skorlama algoritmasını (IP) tamamen korur.
+Gömülü Karar Devresi: Önceden eğitilmiş FHE Karar Ağacı modelini, kriptografik bir devre (server.zip) olarak yerleşik şekilde çalıştırır. Harici bir parametre dosyasına ihtiyaç duymaz; böylece bankanın skorlama algoritmasını tamamen gizli tutar.
 
-Sıfır Bilgi ile Dönüş: Yalnızca şifreli çıktıyı istemciye geri döndürür. Sunucu; girdiyi, izlenen mantık yolunu veya az önce ürettiği nihai kararı kesinlikle bilemez.
+Sıfır Bilgi ile Dönüş: Yalnızca şifreli karar çıktısını istemciye geri döndürür. Sunucu; müşterinin rasyolarını, ağaçta izlenen karar yolunu veya ürettiği nihai sonucu kesinlikle bilemez.
 
 🔄 Şifreli Veri ve Süreç Akışı
 
 sequenceDiagram
-    participant UI as Electron Arayüzü
+    participant UI as Masaüstü Arayüzü (Electron)
     participant Vault as Yerel Kasa (Port 8000)
     participant Cloud as Banka Sunucusu (Port 8001)
 
-    UI->>Vault: Mizanı Yükle (Nakit, Borç, Gelir vb.)
-    Note over Vault: Sıkı Veri Doğrulama ve 4-bit Kuantizasyon
-    Vault->>Vault: Geçici Anahtar Üretimi (RAM'de)
-    Vault->>Vault: 5 TDHP Rasyosunu Şifrele (Ciphertext)
-    UI->>Cloud: Şifreli Veriyi + Değerlendirme Anahtarını Gönder
-    Note over Cloud: FHE Karar Ağacı Değerlendirmesi (Gömülü IP)
-    Cloud-->>UI: Şifreli Risk Kararı (Şifreli Çıktı)
-    UI->>Vault: Şifreli Çıktıyı Çöz
-    Vault-->>UI: Nihai Karar (0: ONAY, 1: RET)
+    UI->>Vault: Mizan Dosyasını Yükle (Excel)
+    Note over Vault: Hücre Doğrulama ve 4-Bit Ölçekleme (0-15)
+    Vault->>Vault: Geçici Anahtar Üretimi (RAM)
+    Vault->>Vault: 5 TDHP Rasyosunu Şifrele
+    UI->>Cloud: Şifreli Rasyolar + Değerlendirme Anahtarları
+    Note over Cloud: Şifreli Veri Üzerinde Karar Ağacı İşletimi (Gömülü IP)
+    Cloud-->>UI: Şifreli Risk Kararı
+    UI->>Vault: Şifreli Kararı Çöz
+    Vault-->>UI: Nihai Sonuç (0: ONAY, 1: RET)
 
 
 🛠️ Teknoloji Yığını
 
-Frontend (Masaüstü Terminali)
+Masaüstü Arayüzü
 
-Framework: React.js + Vite (Yüksek performanslı arayüz derlemesi)
+Arayüz Çatısı: React.js + Vite (Yüksek performanslı kullanıcı arayüzü)
 
-Masaüstü Motoru: Electron.js (İşletim sistemi entegrasyonu, .exe paketleme)
+Masaüstü Motoru: Electron.js (İşletim sistemi entegrasyonu ve .exe kurulum paketleme)
 
-Veri İşleme: Kolon başlığı değişikliklerine veya boş hücre açıklarına karşı bağışık, kesin hücre indeksine dayalı xlsx ayrıştırıcı.
+Veri İşleme: Kolon başlığı değişikliklerine veya boş hücre açıklarına karşı korumalı, kesin hücre indeksine dayalı xlsx ayrıştırıcı
 
-UI/UX: Sıfır Güven temalı karanlık mod, gerçek zamanlı kriptografik görselleştiriciler ve yandan açılan Denetim İzi (Audit Trail) paneli.
+Kullanıcı Deneyimi: Sıfır Güven temalı karanlık arayüz, gerçek zamanlı şifreleme göstergeleri ve yandan açılan Denetim İzi paneli
 
-Backend (Kriptografi ve Yapay Zeka)
+Kriptografi ve Yapay Zeka Altyapısı
 
-Çekirdek Motor: Python 3.10, FastAPI, Uvicorn
+Sunucu Motoru: Python 3.10, FastAPI, Uvicorn
 
-FHE Kütüphanesi: concrete-python (Zama) / concrete-fhe-toolkit
+FHE Kütüphanesi: Zama concrete-python / concrete-fhe-toolkit
 
-Model Eğitimi: Sentetik TDHP rasyo üretimi (0_preparation.py) ve Concrete Compiler ile FHE devrelerine derleme işlemi.
+Model Derleme: Sentetik TDHP rasyo veri seti üzerinde eğitilen karar ağacının Concrete derleyicisi ile doğrudan kriptografik FHE devrelerine dönüştürülmesi
 
-Altyapı: Docker ve Docker Compose (Önbellek optimizasyonu ile Windows üzerinde sorunsuz çalışma için izole ortamlar).
+Konteyner Altyapısı: Docker ve Docker Compose (Önbellek optimizasyonu ile Windows üzerinde sorunsuz çalışma için izole servisler)
 
 🔒 Temel Güvenlik Özellikleri
 
-Gerçek Sıfır Güven (tree_params.json Yok): Model mantığı, sunucunun FHE devresine doğrudan derlenmiştir. İstemci, bankanın değerlendirme kriterlerine tamamen kördür.
+Gerçek Çift Taraflı Sıfır Güven: Karar ağacı kuralları istemcide hiçbir açık metin dosyasında tutulmaz; doğrudan sunucunun FHE devresine gömülüdür. İstemci bankanın değerlendirme eşiklerine tamamen kördür.
 
-Sıkı Veri Bütünlüğü: Yüklenen tablolar kesin olarak hücre indeksleri üzerinden okunur. Tanımsız metinler, boş dosyalar veya eksik hücreler anında reddedilir; böylece geçersiz verinin "sıfır" kabul edilmesinden doğabilecek güvenlik açıkları engellenir.
+Sıkı Veri Bütünlüğü: Yüklenen mizan tabloları kesin olarak hücre indeksleri üzerinden okunur. Tanımsız metinler, boş dosyalar veya eksik hücreler anında reddedilir; geçersiz verinin "sıfır" kabul edilmesinden doğabilecek güvenlik açıkları engellenir.
 
-Bellek İçi (In-Memory) Kriptografi: Kriptografik anahtarlar RAM'de geçici olarak üretilir (KEYS_GENERATED_IN_RAM). Diske hiçbir zaman gizli anahtar yazılmaz.
+Bellek İçi Kriptografi: Kriptografik anahtarlar yalnızca RAM üzerinde geçici olarak üretilir. Diske hiçbir zaman gizli anahtar yazılmaz ve oturum kapandığında anahtarlar bellekten silinir.
 
-Gelişmiş Denetim İzi: Uygulama üzerinde yapılan her işlem (dosya okuma, şifreleme, anahtar üretimi, sunucu iletişimi), denetim ve regülasyon uyumluluğu için "İşlem Geçmişi" panelinde zaman damgasıyla günlüğe kaydedilir.
+Gelişmiş Denetim İzi: Uygulama üzerinde gerçekleştirilen her adım (dosya okuma, anahtar üretimi, şifreleme, sunucu iletişimi ve karar çözme), denetim uyumluluğu için İşlem Geçmişi panelinde zaman damgasıyla kayıt altına alınır.
 
-🚀 Geliştirici Kurulumu
+🚀 Geliştirici Kurulumu ve Demo Çalıştırma
 
-Projeyi yerel geliştirme ortamınızda kurmak ve çalıştırmak için aşağıdaki adımları izleyin:
+Projeyi yerel ortamınızda kurup demo modunda uçtan uca test etmek için aşağıdaki adımları izleyin:
 
 1. Arka Plan FHE Servislerini Başlatın
 
-Proje dizininde bir terminal açın ve izole Python/FastAPI sunucularını başlatın. Derleme süreleri .dockerignore optimizasyonları sayesinde hızlandırılmıştır.
+Proje ana dizininde bir terminal açın ve hem Yerel Kasa'yı hem de Banka Sunucusu'nu izole Docker konteynerleri olarak başlatın:
 
-# Hem Yerel Kasayı (Client) hem de Uzak Sunucuyu başlatır
 docker compose up --build -d
 
 
-(Bu komut Yerel Kasayı localhost:8000 portuna, Uzak Sunucuyu ise localhost:8001 portuna bağlar.)
+(Bu komut Yerel Kasa servisini localhost:8000 portuna, Uzak Banka Sunucusu servisini ise localhost:8001 portuna bağlar.)
 
 2. Masaüstü Arayüzünü Başlatın
 
-Ayrı bir terminalde Node bağımlılıklarını kurun ve Electron uygulamasını başlatın:
+Ayrı bir terminalde gerekli paketleri yükleyin ve Electron masaüstü uygulamasını başlatın:
 
 npm install
 npm run dev
 
 
-3. Prodüksiyon İçin Derleme
+3. Kurulum Dosyası (.exe) Oluşturma
 
-Kurulabilir Windows .exe terminalini oluşturmak için:
+Windows için kurulabilir .exe paketini derlemek için:
 
 npm run build:exe
