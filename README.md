@@ -68,7 +68,7 @@ Backend (Kriptografi ve Yapay Zeka)
 
 Çekirdek Motor: Python 3.10, FastAPI, Uvicorn
 
-FHE Kütüphanesi: concrete-ml / concrete-python (Zama)
+FHE Kütüphanesi: concrete-python (Zama) / concrete-fhe-toolkit
 
 Model Eğitimi: Sentetik TDHP rasyo üretimi (0_preparation.py) ve Concrete Compiler ile FHE devrelerine derleme işlemi.
 
